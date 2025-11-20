@@ -6,9 +6,11 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-green)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> Proyecto de ingeniería de datos con pipeline end-to-end: desde generación de datos sintéticos IoT hasta visualización en Power BI, implementando arquitectura medallion en BigQuery.
+> Proyecto en curso de ingeniería de datos con pipeline end-to-end: desde generación de datos sintéticos IoT hasta visualización en Power BI, implementando arquitectura medallion en BigQuery.
 
 > **Nota**: Proyecto sin fines de lucro. El dataset es completamente sintético, basado en el paper académico citado.
+
+> **Proyecto en desarrollo activo**: El pipeline de datos está completo y es reutilizable, pero el dashboard de Power BI requiere visualizaciones adicionales para análisis más profundos.
 
 ## 📋 Descripción
 

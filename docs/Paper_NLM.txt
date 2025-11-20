@@ -1,0 +1,94 @@
+¡Estimado/a colega! Como ingeniero jefe de Data & ML, he analizado la arquitectura de monitoreo IoT para la instalación de refrigeración presentada en las fuentes. Este sistema está sólidamente diseñado bajo un **enfoque horizontal**, utilizando componentes industriales de alta fiabilidad y *software* de código abierto para lograr escalabilidad y costos reducidos.
+
+A continuación, presento un análisis detallado del proceso ETL (Extracción, Transformación y Carga) y una sugerencia de columnas clave para la ingeniería de datos basándose en la información disponible.
+
+---
+
+## Análisis para Procesos ETL
+
+El proceso de *pipeline* de datos implementado en esta solución de monitoreo de energía está diseñado para la adquisición continua y el procesamiento de datos de activos industriales en tiempo real.
+
+### 1. Extracción (E)
+
+La fase de extracción se centra en la recolección de datos de recursos existentes, minimizando la inversión en *hardware* nuevo.
+
+| Fuente de Datos | Tipo de Dispositivo | Protocolo de Comunicación | Frecuencia de Extracción |
+| :--- | :--- | :--- | :--- |
+| **Controlador de Ciclo de Refrigeración** | Controlador electrónico Eliwell EWCM9100 | Modbus RTU, a través de puerto RS485 | Múltiples registros (por ejemplo, registros de ventiladores) |
+| **Medidor de Energía** | Analizador de potencia trifásico Circutor CVM-MINI | Modbus RTU | Búfer de datos recolectado en un solo mensaje Modbus cada minuto |
+| **Puerta de Enlace (Gateway)** | Siemens **SIMATIC IOT2040** | El componente principal que lee los buses de comunicación industrial y se conecta a Internet. | Adquiere datos de los dispositivos de campo y los almacena. |
+
+**Observación Crítica:** Los datos se envían en transferencias de mensajes largos (20 registros) para **maximizar el rendimiento** de las comunicaciones.
+
+### 2. Transformación (T)
+
+La transformación ocurre principalmente dentro del *gateway* SIMATIC IOT2040, utilizando el *software* de código abierto **Node-RED**.
+
+| Proceso de Transformación | Herramienta | Descripción |
+| :--- | :--- | :--- |
+| **Descomposición de Datos (Parsing)** | Función de analizador (*parser*) hecha a medida dentro de Node-RED | El búfer de datos recolectado (de 20 registros) se divide en sus **componentes individuales** (como las magnitudes eléctricas de interés). |
+| **Agregación y Reporte Local** | Base de datos **SQLite** | Se realizan **agregaciones posteriores** en la base de datos para obtener informes para un período seleccionable. Estos datos incluyen información sobre la operación diaria (consumo de energía, estados de ciclo On/Off). |
+| **Cálculo de KPI** | Lógica implementada localmente en cada supermercado | Se calcula el **consumo de energía por mes y por metro cuadrado** de la instalación, definido como el Indicador Clave de Rendimiento (KPI) seleccionado. |
+
+### 3. Carga (L)
+
+La carga se realiza en dos vías principales: almacenamiento local para informes detallados y carga en la nube para el *benchmarking* centralizado.
+
+| Destino de la Carga | Tipo de Almacenamiento/Plataforma | Uso |
+| :--- | :--- | :--- |
+| **Almacenamiento Local** | Base de datos **SQLite** | Los datos del EWCM9100 y CVM-MINI se insertan **cada minuto**. Permite la generación de informes históricos y reportes sobre la operación diaria. |
+| **Visualización Local** | Node-RED Dashboard | Generación de representaciones gráficas y visualización del menú principal. Los reportes pueden exportarse en **formato .csv**. |
+| **Carga en la Nube (Benchmarking)** | CloudMQTT message broker | Los KPIs calculados localmente se envían mediante el componente "mqtt out" de Node-RED, permitiendo un **dashboard de *benchmarking*** que muestra los indicadores combinados de todas las sucursales. |
+
+---
+
+## Sugerencia de Columnas Clave para Ingeniería de Datos
+
+Para una robusta ingeniería de datos y ML, es crucial estructurar la información recolectada (que proviene de registros Modbus y mediciones eléctricas) junto con su contexto.
+
+Sugiero el uso de al menos tres tablas lógicas: una para **Datos Crudos/Mediciones**, una para **Metadatos de la Instalación**, y una para **KPIs Agregados**.
+
+### A. Tabla de Mediciones de Sensores (Datos Crudos)
+
+Esta tabla debe capturar los datos que se insertan cada minuto en la base de datos SQLite.
+
+| Columna Sugerida (Español) | Columna Sugerida (Técnico) | Fuente de Datos Relevante | Detalle/Propósito |
+| :--- | :--- | :--- | :--- |
+| **ID Instalación** | `installation_id` | Contexto | Identificador único de la sucursal o supermercado (ya que se supervisan tres diferentes). |
+| **Timestamp (UTC)** | `timestamp_utc` | Inserción cada minuto | Momento exacto de la medición (crucial para el análisis de series de tiempo). |
+| **Consumo de Energía (kWh)** | `energy_consumption_kwh` | CVM-MINI | Medida eléctrica principal de la instalación. |
+| **Potencia Eléctrica (kW)** | `electrical_power_kw` | CVM-MINI | Medida de la potencia absorbida. |
+| **Factor de Potencia** | `power_factor` | CVM-MINI | Registro de las medidas eléctricas disponibles (ejemplo Fig. 4). |
+| **Estado Ventiladores** | `ventilator_state` | EWCM9100 | Registro de control de los ventiladores. Clave para analizar el rendimiento operativo. |
+| **Estado Condensadores** | `condenser_state` | EWCM9100 | Variable utilizada por el controlador de refrigeración. |
+| **Detección Ciclo Descongelación** | `defrost_cycle_detected` | EWCM9100 | Clave para correlacionar mediciones con el ciclo operativo del refrigerador. |
+| **Temperatura (°C)** | `temperature_celsius` | EWCM9100/Sensores | Información recibida por el controlador (presión, temperatura, nivel). |
+| **Estado Ciclo On/Off** | `on_off_cycle_state` | Datos agregados | Variable para reportar la operación diaria. |
+
+### B. Tabla de KPIs Agregados (Benchmarking)
+
+Esta tabla contendría la información enviada al *message broker* CloudMQTT.
+
+| Columna Sugerida (Español) | Columna Sugerida (Técnico) | Propósito |
+| :--- | :--- | :--- |
+| **ID Instalación** | `installation_id` | Clave foránea. |
+| **Fecha de Reporte** | `report_date` | Periodo mensual para el cual se calculó el KPI. |
+| **KPI: Energía/m²/Mes** | `kpi_energy_per_sqm_monthly` | El indicador clave de rendimiento seleccionado para *benchmarking*. |
+
+### C. Tabla de Metadatos de la Instalación
+
+Esta tabla debe contener información estática o semiestática para normalizar los datos y contextualizar los KPIs.
+
+| Columna Sugerida (Español) | Columna Sugerida (Técnico) | Fuente de Datos Relevante | Propósito |
+| :--- | :--- | :--- | :--- |
+| **ID Instalación** | `installation_id` | Contexto | Clave primaria. |
+| **Tipo de Gabinete** | `cabinet_type` | Descripción | Distinción entre gabinetes de fruta, carne o congelados. |
+| **Temperatura Operación Deseada** | `target_operation_temp` | Descripción | Las instalaciones operan a diferentes temperaturas. |
+| **Área (m²)** | `square_meters` | Cálculo de KPI | Necesario para calcular el KPI de consumo de energía por metro cuadrado. |
+| **Ubicación Geográfica** | `geographic_location` | Descripción | País (Argentina) y ubicación específica. |
+
+---
+
+El proceso ETL desarrollado es un ejemplo robusto de cómo el IoT puede transformar la gestión de energía. La elección del *gateway* industrial **SIMATIC IOT2040** y el *software* **Node-RED** garantiza que la plataforma sea fiable, escalable y de costo reducido, elementos esenciales para cualquier proyecto de ingeniería de datos en entornos industriales.
+
+Este flujo de datos es análogo a un sistema de auditoría fiscal automatizado: los Modbus actúan como los contadores industriales que registran cada transacción (medición). El *gateway* (la oficina de contabilidad local) recoge estos recibos, los clasifica (parser en Node-RED), los archiva en detalle (SQLite), y finalmente, solo envía los resúmenes financieros clave (KPIs) a la sede central (CloudMQTT) para que la dirección pueda comparar el rendimiento de todas las sucursales.

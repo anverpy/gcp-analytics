@@ -206,24 +206,6 @@ Tema estandarizado para todos los dashboards de Power BI definido en `powerbi_th
 | **Uptime del Compresor** | % tiempo operativo | 90-95% |
 | **COP Estimado** | Cooling/Power | >2.5 |
 
-## 📊 Ejemplo de Resultados
-
-```sql
--- Top instalaciones por eficiencia
-SELECT 
-  installation_id,
-  ROUND(energy_per_sqm, 2) as kWh_per_sqm,
-  performance_category
-FROM kpi_energy_monthly
-ORDER BY energy_per_sqm;
-```
-
-| installation_id | kWh_per_sqm | performance_category |
-|-----------------|-------------|----------------------|
-| STORE_ARG_001 | 25.3 | 🟢 Excelente |
-| STORE_ARG_002 | 28.7 | 🟡 Normal |
-| STORE_ARG_003 | 45.2 | 🔴 Ineficiente |
-
 ## 📊 Dashboards Power BI Implementados
 
 ### **Dashboard 01: Métricas Horarias** ✅

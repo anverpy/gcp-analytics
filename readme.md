@@ -1,6 +1,6 @@
 # IoT Monitoring & Analytics Pipeline
 
-<img src="assets/sc.png" alt="Dashboard Screenshot" width="50%">
+<img src="assets/sc.png" alt="Dashboard Screenshot" width="75%">
 
 [![BigQuery](https://img.shields.io/badge/BigQuery-enabled-blue)](https://cloud.google.com/bigquery)
 [![Python](https://img.shields.io/badge/Python-3.9+-green)](https://www.python.org/)
